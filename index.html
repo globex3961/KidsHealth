@@ -423,6 +423,12 @@ canvas{display:block;touch-action:none}
 .practice-task-panel .pt-age-tab{padding:3px 10px;border-radius:8px;font-size:11px;font-weight:bold;cursor:pointer;background:#f0f0f0;color:#888;transition:all .12s}
 .practice-task-panel .pt-age-tab:hover{background:#e8e8e8}
 .practice-task-panel .pt-age-tab.active{background:#7B1FA2;color:#fff}
+.practice-task-panel .pt-collapse-btn{position:absolute;top:6px;right:6px;background:#f0f0f0;border:none;border-radius:6px;font-size:11px;padding:3px 9px;cursor:pointer;color:#666;line-height:1;transition:background .12s}
+.practice-task-panel .pt-collapse-btn:hover{background:#e0e0e0}
+.practice-task-panel.collapsed{padding:6px 30px 6px 12px;max-width:250px}
+.practice-task-panel.collapsed .pt-desc,.practice-task-panel.collapsed .pt-required,.practice-task-panel.collapsed .pt-actions,.practice-task-panel.collapsed .pt-task-list{display:none!important}
+.practice-task-panel.collapsed .pt-header{margin-bottom:0}
+.practice-task-panel.collapsed .pt-progress{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:inline-block;vertical-align:middle}
 .practice-task-panel .pt-header{flex-wrap:wrap}
 .practice-task-panel .pt-task-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;max-height:160px;overflow-y:auto}
 .practice-task-panel .pt-task-pick{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:12px;transition:background .12s;border:1px solid transparent}
@@ -673,6 +679,8 @@ canvas{display:block;touch-action:none}
   .practice-task-panel{top:auto;bottom:80px;left:8px;right:8px;max-width:none;border-radius:12px}
   .practice-task-panel .pt-desc{font-size:13px}
   .practice-task-panel .pt-required .pt-req-item{font-size:10px;padding:2px 6px}
+  .practice-task-panel.collapsed{left:8px;right:auto;max-width:180px;padding:5px 28px 5px 10px;bottom:80px}
+  .practice-task-panel.collapsed .pt-age-switcher{display:none}
   #equip-panel h3{display:none}
   #equip-body{max-height:none;overflow:visible}
   .equip-group{margin-bottom:0}
@@ -10450,7 +10458,17 @@ function OutdoorGame(){
       panel.innerHTML=html;
       document.getElementById('canvas-container').appendChild(panel);
       panel.querySelectorAll('.equip-item').forEach(el=>{
-        el.addEventListener('click',function(){self.addEquipment(this.dataset.type)});
+        el.addEventListener('click',function(){
+          self.addEquipment(this.dataset.type);
+          /* auto-collapse practice panel on mobile to avoid blocking placement */
+          if(self.practiceMode&&window.innerWidth<=600&&!self._ptCollapsed){
+            var ptPnl=document.getElementById('practice-task-pnl');
+            if(ptPnl){
+              self._ptCollapsed=true;ptPnl.classList.add('collapsed');
+              var btn=ptPnl.querySelector('.pt-collapse-btn');if(btn)btn.textContent='▶';
+            }
+          }
+        });
       });
     }
     document.getElementById('eq-rotate').addEventListener('click',function(){self.rotateSelected()});
@@ -11450,6 +11468,7 @@ function OutdoorGame(){
     self.practiceType='support';
     self.practiceMajorType='strength';
     self.practiceFreeSelect=true;
+    self._ptCollapsed=false;
     if(!self.practiceCompletedTasks['小班'])self.practiceCompletedTasks['小班']=new Set();
     self.placedItems.forEach(item=>{self.equipGroup.remove(item.mesh)});
     self.placedItems=[];self.interactables={};self.selectedItem=null;
@@ -11784,7 +11803,9 @@ function OutdoorGame(){
     const task=tasks[self.practiceTaskIdx];
     const doneSet=self.practiceCompletedTasks[self.practiceAge]||new Set();
     pnl=document.createElement('div');pnl.id='practice-task-pnl';pnl.className='practice-task-panel';
-    var html='<div class="pt-header">';
+    if(self._ptCollapsed)pnl.classList.add('collapsed');
+    var html='<button class="pt-collapse-btn">'+(self._ptCollapsed?'▶':'✕')+'</button>';
+    html+='<div class="pt-header">';
     html+='<div class="pt-age-switcher">';
     ['小班','中班','大班'].forEach(function(a){
       var cls='pt-age-tab'+(a===self.practiceAge?' active':'');
@@ -11849,6 +11870,16 @@ function OutdoorGame(){
       if(!self.checkPracticeTask())return;self.startPracticeAnim();
     });
     pnl.querySelector('.pt-btn-exit').addEventListener('click',function(){self.exitPracticeMode()});
+    pnl.querySelector('.pt-collapse-btn').addEventListener('click',function(){
+      self._ptCollapsed=!self._ptCollapsed;
+      if(self._ptCollapsed){
+        pnl.classList.add('collapsed');
+        this.textContent='▶';
+      }else{
+        pnl.classList.remove('collapsed');
+        this.textContent='✕';
+      }
+    });
   };
 
   this.checkPracticeTask=function(){
